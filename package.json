@@ -1,0 +1,19 @@
+{
+  "name": "enrollware-bot",
+  "version": "1.0.0",
+  "description": "Automated Enrollware data export bot",
+  "main": "enrollware-bot/login_and_export.js",
+  "type": "module",
+  "scripts": {
+    "start": "node enrollware-bot/login_and_export.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "puppeteer-real-browser": "^1.0.0",
+    "dotenv": "^16.0.0",
+    "googleapis": "^128.0.0"
+  },
+  "keywords": ["automation", "enrollware", "export"],
+  "author": "",
+  "license": "MIT"
+} 
