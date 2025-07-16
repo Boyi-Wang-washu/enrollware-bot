@@ -26,6 +26,7 @@ const CREDS = {
 
 
 (async () => {
+  await fs.mkdir(path.join(process.cwd(), 'chrome-data'), { recursive: true });
   const { browser, page } = await connect({
     headless: process.env.NODE_ENV === 'production' ? true : false, // 云端环境使用headless
     turnstile: true,
