@@ -65,32 +65,49 @@ const CREDS = {
     try {
       console.log('⌨️ 需要登录，输入用户名和密码...');
       
-      // 简化输入逻辑，直接设置值
-      await page.type('input[name="username"]', CREDS.user, { delay: 100 });
-      await page.type('input[name="password"]', CREDS.pass, { delay: 100 });
+      // 先清空输入框，确保没有残留内容
+      await page.click('input[name="username"]');
+      await page.keyboard.down('Control');
+      await page.keyboard.press('KeyA');
+      await page.keyboard.up('Control');
+      await page.keyboard.press('Backspace');
+      
+      await page.click('input[name="password"]');
+      await page.keyboard.down('Control');
+      await page.keyboard.press('KeyA');
+      await page.keyboard.up('Control');
+      await page.keyboard.press('Backspace');
+      
+      // 使用更慢的速度输入用户名
+      console.log('输入用户名:', CREDS.user);
+      await page.click('input[name="username"]');
+      await page.type('input[name="username"]', CREDS.user, { delay: 200 });
+      await new Promise(resolve => setTimeout(resolve, 1000)); // 等待1秒确保输入完成
+      
+      // 使用更慢的速度输入密码
+      console.log('输入密码: [已隐藏]');
+      await page.click('input[name="password"]');
+      await page.type('input[name="password"]', CREDS.pass, { delay: 200 });
+      await new Promise(resolve => setTimeout(resolve, 1000)); // 等待1秒确保输入完成
       
       // 验证输入是否正确
       const usernameValue = await page.$eval('input[name="username"]', el => el.value);
       const passwordValue = await page.$eval('input[name="password"]', el => el.value);
-      console.log('输入验证 - 用户名:', usernameValue === CREDS.user ? '✅' : '❌');
-      console.log('输入验证 - 密码:', passwordValue === CREDS.pass ? '✅' : '❌');
+      console.log('输入验证 - 用户名:', usernameValue === CREDS.user ? '✅' : `❌ (期望: ${CREDS.user}, 实际: ${usernameValue})`);
+      console.log('输入验证 - 密码:', passwordValue === CREDS.pass ? '✅' : '❌ (长度不匹配)');
       
       if (usernameValue !== CREDS.user || passwordValue !== CREDS.pass) {
-        console.log('❌ 输入验证失败，重新输入...');
-        // 清空并重新输入
-        await page.click('input[name="username"]');
-        await page.keyboard.down('Control');
-        await page.keyboard.press('KeyA');
-        await page.keyboard.up('Control');
-        await page.keyboard.press('Backspace');
-        await page.type('input[name="username"]', CREDS.user, { delay: 100 });
+        console.log('❌ 输入验证失败，使用更保守的方式重新输入...');
         
-        await page.click('input[name="password"]');
-        await page.keyboard.down('Control');
-        await page.keyboard.press('KeyA');
-        await page.keyboard.up('Control');
-        await page.keyboard.press('Backspace');
-        await page.type('input[name="password"]', CREDS.pass, { delay: 100 });
+        // 使用 fill 方法直接设置值
+        await page.fill('input[name="username"]', CREDS.user);
+        await page.fill('input[name="password"]', CREDS.pass);
+        
+        // 再次验证
+        const finalUsername = await page.$eval('input[name="username"]', el => el.value);
+        const finalPassword = await page.$eval('input[name="password"]', el => el.value);
+        console.log('最终验证 - 用户名:', finalUsername === CREDS.user ? '✅' : `❌ (期望: ${CREDS.user}, 实际: ${finalUsername})`);
+        console.log('最终验证 - 密码:', finalPassword === CREDS.pass ? '✅' : '❌ (长度不匹配)');
       }
       
       // 输入完后点击页面空白处，触发失焦
