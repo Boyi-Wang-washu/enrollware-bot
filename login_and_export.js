@@ -115,17 +115,49 @@ const CREDS = {
       console.log('🔘 点击登录按钮...');
       await page.realClick('input[type="submit"]');
       console.log('🛡️ 等待跳转页面...');
-      // 登录后不再单独等 navigation，直接等 class-list 页面的特征元素
-      await page.waitForSelector('select[name="ctl00$mainContent$regdateType"]', { visible: true, timeout: 60000 });
+      
+      // 先等待页面跳转完成
+      try {
+        await page.waitForNavigation({ timeout: 60000, waitUntil: 'domcontentloaded' });
+      } catch (e) {
+        console.log('⚠️ 页面跳转超时，继续检查当前页面状态...');
+      }
+      
+      // 检查当前页面URL
       const currentURL = page.url();
       console.log('📍 当前页面URL:', currentURL);
-      if (!currentURL.includes('class-list.aspx')) {
-        console.log('❌ 登录失败，停止执行');
+      
+      // 如果还在登录页，说明登录失败
+      if (currentURL.includes('login') || currentURL.includes('signin') || await page.$('input[name="username"]') !== null) {
+        console.log('❌ 登录失败，页面仍在登录界面');
         await page.screenshot({ path: 'error.png' });
+        const pageContent = await page.content();
+        console.log('页面HTML片段:', pageContent.slice(0, 1000));
         await browser.close();
         process.exit(1);
       }
-      console.log('✅ 登录成功!');
+      
+      // 如果跳转到了class-list页面，等待目标元素
+      if (currentURL.includes('class-list.aspx')) {
+        try {
+          await page.waitForSelector('select[name="ctl00$mainContent$regdateType"]', { visible: true, timeout: 30000 });
+          console.log('✅ 登录成功!');
+        } catch (e) {
+          console.log('⚠️ 找不到目标下拉框，打印页面内容...');
+          await page.screenshot({ path: 'error.png' });
+          const pageContent = await page.content();
+          console.log('页面HTML片段:', pageContent.slice(0, 1000));
+          await browser.close();
+          process.exit(1);
+        }
+      } else {
+        console.log('❌ 登录后跳转到未知页面:', currentURL);
+        await page.screenshot({ path: 'error.png' });
+        const pageContent = await page.content();
+        console.log('页面HTML片段:', pageContent.slice(0, 1000));
+        await browser.close();
+        process.exit(1);
+      }
     } catch (e) {
       console.log('❌ 登录流程异常:', e);
       await page.screenshot({ path: 'error.png' });
