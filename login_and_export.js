@@ -64,50 +64,35 @@ const CREDS = {
   if (needLogin) {
     try {
       console.log('⌨️ 需要登录，输入用户名和密码...');
-      // 优先模拟粘贴输入用户名
-      await page.click('input[name="username"]');
-      await page.evaluate((val) => {
-        const input = document.querySelector('input[name="username"]');
-        input.value = '';
-        input.focus();
-        input.dispatchEvent(new Event('focus'));
-        input.dispatchEvent(new Event('click'));
-        input.value = val;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-      }, CREDS.user);
-      // 检查粘贴后内容是否正确，否则用逐字符输入兜底
-      let usernameValue = await page.$eval('input[name="username"]', el => el.value);
-      if (usernameValue !== CREDS.user) {
+      
+      // 简化输入逻辑，直接设置值
+      await page.type('input[name="username"]', CREDS.user, { delay: 100 });
+      await page.type('input[name="password"]', CREDS.pass, { delay: 100 });
+      
+      // 验证输入是否正确
+      const usernameValue = await page.$eval('input[name="username"]', el => el.value);
+      const passwordValue = await page.$eval('input[name="password"]', el => el.value);
+      console.log('输入验证 - 用户名:', usernameValue === CREDS.user ? '✅' : '❌');
+      console.log('输入验证 - 密码:', passwordValue === CREDS.pass ? '✅' : '❌');
+      
+      if (usernameValue !== CREDS.user || passwordValue !== CREDS.pass) {
+        console.log('❌ 输入验证失败，重新输入...');
+        // 清空并重新输入
         await page.click('input[name="username"]');
-        await page.evaluate(() => { document.querySelector('input[name="username"]').value = ''; });
-        for (let i = 0; i < CREDS.user.length; i++) {
-          await page.keyboard.type(CREDS.user[i], { delay: 120 });
-          await new Promise(r => setTimeout(r, 150));
-        }
-      }
-      // 优先模拟粘贴输入密码
-      await page.click('input[name="password"]');
-      await page.evaluate((val) => {
-        const input = document.querySelector('input[name="password"]');
-        input.value = '';
-        input.focus();
-        input.dispatchEvent(new Event('focus'));
-        input.dispatchEvent(new Event('click'));
-        input.value = val;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-      }, CREDS.pass);
-      // 检查粘贴后内容是否正确，否则用逐字符输入兜底
-      let passwordValue = await page.$eval('input[name="password"]', el => el.value);
-      if (passwordValue !== CREDS.pass) {
+        await page.keyboard.down('Control');
+        await page.keyboard.press('KeyA');
+        await page.keyboard.up('Control');
+        await page.keyboard.press('Backspace');
+        await page.type('input[name="username"]', CREDS.user, { delay: 100 });
+        
         await page.click('input[name="password"]');
-        await page.evaluate(() => { document.querySelector('input[name="password"]').value = ''; });
-        for (let i = 0; i < CREDS.pass.length; i++) {
-          await page.keyboard.type(CREDS.pass[i], { delay: 150 });
-          await new Promise(r => setTimeout(r, 180));
-        }
+        await page.keyboard.down('Control');
+        await page.keyboard.press('KeyA');
+        await page.keyboard.up('Control');
+        await page.keyboard.press('Backspace');
+        await page.type('input[name="password"]', CREDS.pass, { delay: 100 });
       }
+      
       // 输入完后点击页面空白处，触发失焦
       await page.mouse.click(10, 10);
       console.log('⏳ 等待一下再点击登录...');
