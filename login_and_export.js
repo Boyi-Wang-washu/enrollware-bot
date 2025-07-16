@@ -12,7 +12,7 @@ console.log('PASS:', process.env.EW_PASS);
 
 
 // Windows Chrome路径，如果路径不同请修改
-const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const chromePath = process.env.CHROME_BIN || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 // Chrome driver路径
 const chromeDriverPath = path.join(process.cwd(), '..', 'chromedriver.exe');
 const DOWNLOAD_DIR = path.join(process.cwd(), 'downloads');
@@ -39,7 +39,7 @@ const CREDS = {
   });
   
   const { browser, page } = await connect({
-    headless: false,
+    headless: process.env.NODE_ENV === 'production' ? true : false,
     turnstile: true,
     customConfig: {
       chromePath,
