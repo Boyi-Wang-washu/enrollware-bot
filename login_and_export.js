@@ -26,6 +26,18 @@ const CREDS = {
 
 (async () => {
   await fs.mkdir(path.join(process.cwd(), 'chrome-data'), { recursive: true });
+  
+  // 全局异常处理
+  process.on('unhandledRejection', (reason, promise) => {
+    console.log('❌ 未处理的Promise拒绝:', reason);
+    process.exit(1);
+  });
+  
+  process.on('uncaughtException', (error) => {
+    console.log('❌ 未捕获的异常:', error);
+    process.exit(1);
+  });
+  
   const { browser, page } = await connect({
     headless: false,
     turnstile: true,
@@ -204,15 +216,4 @@ const CREDS = {
 
   console.log('🎉 脚本执行完成。');
   await browser.close();
-})();
-
-// 全局异常处理
-process.on('unhandledRejection', async (reason, promise) => {
-  console.log('❌ 未处理的Promise拒绝:', reason);
-  process.exit(1);
-});
-
-process.on('uncaughtException', async (error) => {
-  console.log('❌ 未捕获的异常:', error);
-  process.exit(1);
 })();
