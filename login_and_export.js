@@ -52,6 +52,9 @@ const CREDS = {
     },
   });
 
+  // 设置全局 navigation 超时时间为 60 秒
+  page.setDefaultNavigationTimeout(60000);
+
   // 先访问 class-list.aspx
   console.log('🧭 正在前往 class-list.aspx...');
   await page.goto('https://www.enrollware.com/admin/class-list.aspx', { waitUntil: 'domcontentloaded' });
@@ -59,77 +62,92 @@ const CREDS = {
   // 判断是否需要登录
   const needLogin = await page.$('input[name="username"]') !== null;
   if (needLogin) {
-    console.log('⌨️ 需要登录，输入用户名和密码...');
-    // 优先模拟粘贴输入用户名
-    await page.click('input[name="username"]');
-    await page.evaluate((val) => {
-      const input = document.querySelector('input[name="username"]');
-      input.value = '';
-      input.focus();
-      input.dispatchEvent(new Event('focus'));
-      input.dispatchEvent(new Event('click'));
-      input.value = val;
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    }, CREDS.user);
-    // 检查粘贴后内容是否正确，否则用逐字符输入兜底
-    let usernameValue = await page.$eval('input[name="username"]', el => el.value);
-    if (usernameValue !== CREDS.user) {
+    try {
+      console.log('⌨️ 需要登录，输入用户名和密码...');
+      // 优先模拟粘贴输入用户名
       await page.click('input[name="username"]');
-      await page.evaluate(() => { document.querySelector('input[name="username"]').value = ''; });
-      for (let i = 0; i < CREDS.user.length; i++) {
-        await page.keyboard.type(CREDS.user[i], { delay: 120 });
-        await new Promise(r => setTimeout(r, 150));
+      await page.evaluate((val) => {
+        const input = document.querySelector('input[name="username"]');
+        input.value = '';
+        input.focus();
+        input.dispatchEvent(new Event('focus'));
+        input.dispatchEvent(new Event('click'));
+        input.value = val;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }, CREDS.user);
+      // 检查粘贴后内容是否正确，否则用逐字符输入兜底
+      let usernameValue = await page.$eval('input[name="username"]', el => el.value);
+      if (usernameValue !== CREDS.user) {
+        await page.click('input[name="username"]');
+        await page.evaluate(() => { document.querySelector('input[name="username"]').value = ''; });
+        for (let i = 0; i < CREDS.user.length; i++) {
+          await page.keyboard.type(CREDS.user[i], { delay: 120 });
+          await new Promise(r => setTimeout(r, 150));
+        }
       }
-    }
-    // 优先模拟粘贴输入密码
-    await page.click('input[name="password"]');
-    await page.evaluate((val) => {
-      const input = document.querySelector('input[name="password"]');
-      input.value = '';
-      input.focus();
-      input.dispatchEvent(new Event('focus'));
-      input.dispatchEvent(new Event('click'));
-      input.value = val;
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    }, CREDS.pass);
-    // 检查粘贴后内容是否正确，否则用逐字符输入兜底
-    let passwordValue = await page.$eval('input[name="password"]', el => el.value);
-    if (passwordValue !== CREDS.pass) {
+      // 优先模拟粘贴输入密码
       await page.click('input[name="password"]');
-      await page.evaluate(() => { document.querySelector('input[name="password"]').value = ''; });
-      for (let i = 0; i < CREDS.pass.length; i++) {
-        await page.keyboard.type(CREDS.pass[i], { delay: 150 });
-        await new Promise(r => setTimeout(r, 180));
+      await page.evaluate((val) => {
+        const input = document.querySelector('input[name="password"]');
+        input.value = '';
+        input.focus();
+        input.dispatchEvent(new Event('focus'));
+        input.dispatchEvent(new Event('click'));
+        input.value = val;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }, CREDS.pass);
+      // 检查粘贴后内容是否正确，否则用逐字符输入兜底
+      let passwordValue = await page.$eval('input[name="password"]', el => el.value);
+      if (passwordValue !== CREDS.pass) {
+        await page.click('input[name="password"]');
+        await page.evaluate(() => { document.querySelector('input[name="password"]').value = ''; });
+        for (let i = 0; i < CREDS.pass.length; i++) {
+          await page.keyboard.type(CREDS.pass[i], { delay: 150 });
+          await new Promise(r => setTimeout(r, 180));
+        }
       }
-    }
-    // 输入完后点击页面空白处，触发失焦
-    await page.mouse.click(10, 10);
-    console.log('⏳ 等待一下再点击登录...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    console.log('🔘 点击登录按钮...');
-    await page.realClick('input[type="submit"]');
-    console.log('🛡️ 等待跳转页面...');
-    await page.waitForNavigation({ timeout: 30_000, waitUntil: 'domcontentloaded' });
-    const currentURL = page.url();
-    console.log('📍 当前页面URL:', currentURL);
-    if (!currentURL.includes('class-list.aspx')) {
-      console.log('❌ 登录失败，停止执行');
+      // 输入完后点击页面空白处，触发失焦
+      await page.mouse.click(10, 10);
+      console.log('⏳ 等待一下再点击登录...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('🔘 点击登录按钮...');
+      await page.realClick('input[type="submit"]');
+      console.log('🛡️ 等待跳转页面...');
+      // 登录后不再单独等 navigation，直接等 class-list 页面的特征元素
+      await page.waitForSelector('select[name="ctl00$mainContent$regdateType"]', { visible: true, timeout: 60000 });
+      const currentURL = page.url();
+      console.log('📍 当前页面URL:', currentURL);
+      if (!currentURL.includes('class-list.aspx')) {
+        console.log('❌ 登录失败，停止执行');
+        await page.screenshot({ path: 'error.png' });
+        await browser.close();
+        process.exit(1);
+      }
+      console.log('✅ 登录成功!');
+    } catch (e) {
+      console.log('❌ 登录流程异常:', e);
+      await page.screenshot({ path: 'error.png' });
       await browser.close();
       process.exit(1);
     }
-    console.log('✅ 登录成功!');
   } else {
     console.log('✅ 已登录，无需再次登录!');
   }
 
-  console.log('📄 正在跳转到导出页面...');
-  await page.goto('https://www.enrollware.com/admin/student-export.aspx', { waitUntil: 'domcontentloaded' });
-
-  // 等待页面关键元素渲染出来
-  await page.waitForSelector('select[name="ctl00$mainContent$regdateType"]', { visible: true, timeout: 10000 });
-  await page.waitForSelector('select[name="ctl00$mainContent$dateType"]', { visible: true, timeout: 10000 });
+  try {
+    console.log('📄 正在跳转到导出页面...');
+    await page.goto('https://www.enrollware.com/admin/student-export.aspx', { waitUntil: 'domcontentloaded' });
+    // 等待页面关键元素渲染出来
+    await page.waitForSelector('select[name="ctl00$mainContent$regdateType"]', { visible: true, timeout: 20000 });
+    await page.waitForSelector('select[name="ctl00$mainContent$dateType"]', { visible: true, timeout: 20000 });
+  } catch (e) {
+    console.log('❌ 跳转导出页面异常:', e);
+    await page.screenshot({ path: 'error.png' });
+    await browser.close();
+    process.exit(1);
+  }
 
   // 自动选择下拉框和填写日期
   // 日期变量只声明一次
