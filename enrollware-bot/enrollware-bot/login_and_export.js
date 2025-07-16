@@ -4,7 +4,7 @@ import fssync from 'fs';
 import path from 'node:path';
 import { connect } from 'puppeteer-real-browser';
 import dotenv from 'dotenv';
-import { uploadAllExcelFiles } from './upload-to-drive.js';
+// import { uploadAllExcelFiles } from './upload-to-drive.js';
 dotenv.config();
 
 
@@ -215,12 +215,12 @@ const CREDS = {
 
   console.log('🎉 脚本执行完成。');
   
-  // 上传到Google Drive（如果配置了的话）
-  try {
-    await uploadAllExcelFiles(DOWNLOAD_DIR);
-  } catch (error) {
-    console.log('⚠️ Google Drive upload failed, but export completed successfully');
-  }
+  // 上传到Google Drive（暂时注释掉）
+  // try {
+  //   await uploadAllExcelFiles(DOWNLOAD_DIR);
+  // } catch (error) {
+  //   console.log('⚠️ Google Drive upload failed, but export completed successfully');
+  // }
   
   await browser.close();
 })();

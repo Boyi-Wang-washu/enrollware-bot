@@ -21,42 +21,62 @@ jobs:
         cache: 'npm'
         
     - name: Install dependencies
-      run: npm ci
-      
+      run: |
+        npm ci
+        echo "Dependencies installed successfully"
+        
     - name: Setup Chrome
       run: |
         sudo apt-get update
         sudo apt-get install -y chromium-browser
         echo "CHROME_BIN=/usr/bin/chromium-browser" >> $GITHUB_ENV
+        echo "Chrome installed at: $(which chromium-browser)"
         
     - name: Create downloads directory
-      run: mkdir -p enrollware-bot/downloads
-      
+      run: |
+        mkdir -p enrollware-bot/downloads
+        echo "Downloads directory created"
+        
+    - name: List files
+      run: |
+        echo "Current directory: $(pwd)"
+        ls -la
+        echo "Enrollware-bot directory:"
+        ls -la enrollware-bot/
+        
     - name: Run export script
       env:
         EW_USER: ${{ secrets.EW_USER }}
         EW_PASS: ${{ secrets.EW_PASS }}
         CHROME_BIN: /usr/bin/chromium-browser
+        NODE_ENV: production
       run: |
+        echo "Starting export script..."
         cd enrollware-bot
+        echo "Current directory: $(pwd)"
+        echo "Files in current directory:"
+        ls -la
         node login_and_export.js
         
     - name: List downloaded files
-      run: ls -la enrollware-bot/downloads/
-      
-    - name: Upload to Google Drive
+      run: |
+        echo "Checking downloaded files..."
+        ls -la enrollware-bot/downloads/ || echo "Downloads directory not found"
+        
+    - name: Upload artifacts
       if: success()
-      uses: burnett01/upload-google-drive@v1.0.0
+      uses: actions/upload-artifact@v4
       with:
-        credentials: ${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}
-        local_file_path: './enrollware-bot/downloads/'
-        drive_folder_id: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+        name: enrollware-exports
+        path: enrollware-bot/downloads/
+        retention-days: 7
         
     - name: Send success notification
       if: success()
       run: |
         echo "✅ Enrollware export completed successfully!"
-        echo "📁 Files uploaded to Google Drive"
+        echo "📁 Files saved as GitHub Actions artifacts"
+        echo "📥 You can download files from the Actions page"
         
     - name: Send failure notification
       if: failure()
