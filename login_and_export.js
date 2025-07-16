@@ -79,22 +79,13 @@ const CREDS = {
     try {
       console.log('⌨️ 需要登录，输入用户名和密码...');
       
-      // 直接设置用户名和密码
-      console.log('输入用户名:', CREDS.user);
-      await page.fill('input[name="username"]', CREDS.user);
-      
-      console.log('输入密码: [已隐藏]');
-      await page.fill('input[name="password"]', CREDS.pass);
-      
-      // 验证输入是否正确
-      const usernameValue = await page.$eval('input[name="username"]', el => el.value);
-      const passwordValue = await page.$eval('input[name="password"]', el => el.value);
-      console.log('输入验证 - 用户名:', usernameValue === CREDS.user ? '✅' : `❌ (期望: ${CREDS.user}, 实际: ${usernameValue})`);
-      console.log('输入验证 - 密码:', passwordValue === CREDS.pass ? '✅' : `❌ (期望长度: ${CREDS.pass.length}, 实际长度: ${passwordValue.length})`);
+      // 使用简单的 type 方法输入
+      await page.type('input[name="username"]', CREDS.user);
+      await page.type('input[name="password"]', CREDS.pass);
       
       // 等待一下再点击登录
       await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('�� 点击登录按钮...');
+      console.log('🔘 点击登录按钮...');
       await page.realClick('input[type="submit"]');
       console.log('🛡️ 等待跳转页面...');
       
