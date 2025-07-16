@@ -34,15 +34,15 @@ jobs:
         
     - name: Create downloads directory
       run: |
-        mkdir -p enrollware-bot/downloads
+        mkdir -p downloads
         echo "Downloads directory created"
         
     - name: List files
       run: |
         echo "Current directory: $(pwd)"
         ls -la
-        echo "Enrollware-bot directory:"
-        ls -la enrollware-bot/
+        echo "Downloads directory:"
+        ls -la downloads/ || echo "Directory not found"
         
     - name: Run export script
       env:
@@ -52,7 +52,6 @@ jobs:
         NODE_ENV: production
       run: |
         echo "Starting export script..."
-        cd enrollware-bot
         echo "Current directory: $(pwd)"
         echo "Files in current directory:"
         ls -la
@@ -61,14 +60,14 @@ jobs:
     - name: List downloaded files
       run: |
         echo "Checking downloaded files..."
-        ls -la enrollware-bot/downloads/ || echo "Downloads directory not found"
+        ls -la downloads/ || echo "Downloads directory not found"
         
     - name: Upload artifacts
       if: success()
       uses: actions/upload-artifact@v4
       with:
         name: enrollware-exports
-        path: enrollware-bot/downloads/
+        path: downloads/
         retention-days: 7
         
     - name: Send success notification
