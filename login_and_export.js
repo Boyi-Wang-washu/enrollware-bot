@@ -110,7 +110,16 @@ const CREDS = {
     console.log('🔘 点击登录按钮...');
     await page.realClick('input[type="submit"]');
     console.log('🛡️ 等待跳转页面...');
-    await page.waitForNavigation({ timeout: 30_000, waitUntil: 'domcontentloaded' });
+    try {
+      await page.waitForNavigation({ timeout: 60000, waitUntil: 'domcontentloaded' });
+    } catch (e) {
+      console.log('⚠️ 页面跳转超时，检查当前页面状态...');
+      await page.screenshot({ path: 'error.png' });
+      const currentURL = page.url();
+      console.log('当前页面URL:', currentURL);
+      await browser.close();
+      process.exit(1);
+    }
     const currentURL = page.url();
     console.log('📍 当前页面URL:', currentURL);
     if (!currentURL.includes('class-list.aspx')) {
