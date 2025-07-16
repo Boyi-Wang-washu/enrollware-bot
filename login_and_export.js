@@ -4,7 +4,6 @@ import fssync from 'fs';
 import path from 'node:path';
 import { connect } from 'puppeteer-real-browser';
 import dotenv from 'dotenv';
-// import { uploadAllExcelFiles } from './upload-to-drive.js';
 dotenv.config();
 
 
@@ -12,8 +11,8 @@ console.log('USER:', process.env.EW_USER);
 console.log('PASS:', process.env.EW_PASS);
 
 
-// Chrome路径，支持云端和本地环境
-const chromePath = process.env.CHROME_BIN || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+// Windows Chrome路径，如果路径不同请修改
+const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 // Chrome driver路径
 const chromeDriverPath = path.join(process.cwd(), '..', 'chromedriver.exe');
 const DOWNLOAD_DIR = path.join(process.cwd(), 'downloads');
@@ -28,45 +27,16 @@ const CREDS = {
 (async () => {
   await fs.mkdir(path.join(process.cwd(), 'chrome-data'), { recursive: true });
   const { browser, page } = await connect({
-    headless: process.env.NODE_ENV === 'production' ? true : false, // 云端环境使用headless
+    headless: false,
     turnstile: true,
     customConfig: {
       chromePath,
       userDataDir: path.join(process.cwd(), 'chrome-data'),
       executablePath: chromeDriverPath,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu',
-        '--disable-popup-blocking',
-        '--disable-notifications',
-        '--no-default-browser-check',
-        '--disable-blink-features=AutomationControlled',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor',
-        '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      ],
     },
     connectOption: {
       defaultViewport: null,
     },
-  });
-
-  // 设置全局 navigation 超时时间为 60 秒
-  page.setDefaultNavigationTimeout(60000);
-  
-  // 设置用户代理
-  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-  
-  // 隐藏 webdriver 属性
-  await page.evaluateOnNewDocument(() => {
-    Object.defineProperty(navigator, 'webdriver', {
-      get: () => undefined,
-    });
   });
 
   // 先访问 class-list.aspx
@@ -76,87 +46,78 @@ const CREDS = {
   // 判断是否需要登录
   const needLogin = await page.$('input[name="username"]') !== null;
   if (needLogin) {
-    try {
-      console.log('⌨️ 需要登录，输入用户名和密码...');
-      
-      // 使用简单的 type 方法输入
-      await page.type('input[name="username"]', CREDS.user);
-      await page.type('input[name="password"]', CREDS.pass);
-      
-      // 等待一下再点击登录
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('🔘 点击登录按钮...');
-      await page.realClick('input[type="submit"]');
-      console.log('🛡️ 等待跳转页面...');
-      
-      // 先等待页面跳转完成
-      try {
-        await page.waitForNavigation({ timeout: 60000, waitUntil: 'domcontentloaded' });
-      } catch (e) {
-        console.log('⚠️ 页面跳转超时，继续检查当前页面状态...');
+    console.log('⌨️ 需要登录，输入用户名和密码...');
+    // 优先模拟粘贴输入用户名
+    await page.click('input[name="username"]');
+    await page.evaluate((val) => {
+      const input = document.querySelector('input[name="username"]');
+      input.value = '';
+      input.focus();
+      input.dispatchEvent(new Event('focus'));
+      input.dispatchEvent(new Event('click'));
+      input.value = val;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }, CREDS.user);
+    // 检查粘贴后内容是否正确，否则用逐字符输入兜底
+    let usernameValue = await page.$eval('input[name="username"]', el => el.value);
+    if (usernameValue !== CREDS.user) {
+      await page.click('input[name="username"]');
+      await page.evaluate(() => { document.querySelector('input[name="username"]').value = ''; });
+      for (let i = 0; i < CREDS.user.length; i++) {
+        await page.keyboard.type(CREDS.user[i], { delay: 120 });
+        await new Promise(r => setTimeout(r, 150));
       }
-      
-      // 检查当前页面URL
-      const currentURL = page.url();
-      console.log('📍 当前页面URL:', currentURL);
-      
-      // 如果还在登录页，说明登录失败
-      if (currentURL.includes('login') || currentURL.includes('signin') || await page.$('input[name="username"]') !== null) {
-        console.log('❌ 登录失败，页面仍在登录界面');
-        await page.screenshot({ path: 'error.png' });
-        const pageContent = await page.content();
-        console.log('页面HTML片段:', pageContent.slice(0, 1000));
-        await browser.close();
-        process.exit(1);
+    }
+    // 优先模拟粘贴输入密码
+    await page.click('input[name="password"]');
+    await page.evaluate((val) => {
+      const input = document.querySelector('input[name="password"]');
+      input.value = '';
+      input.focus();
+      input.dispatchEvent(new Event('focus'));
+      input.dispatchEvent(new Event('click'));
+      input.value = val;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }, CREDS.pass);
+    // 检查粘贴后内容是否正确，否则用逐字符输入兜底
+    let passwordValue = await page.$eval('input[name="password"]', el => el.value);
+    if (passwordValue !== CREDS.pass) {
+      await page.click('input[name="password"]');
+      await page.evaluate(() => { document.querySelector('input[name="password"]').value = ''; });
+      for (let i = 0; i < CREDS.pass.length; i++) {
+        await page.keyboard.type(CREDS.pass[i], { delay: 150 });
+        await new Promise(r => setTimeout(r, 180));
       }
-      
-      // 如果跳转到了class-list页面，等待目标元素
-      if (currentURL.includes('class-list.aspx')) {
-        try {
-          await page.waitForSelector('select[name="ctl00$mainContent$regdateType"]', { visible: true, timeout: 30000 });
-          console.log('✅ 登录成功!');
-        } catch (e) {
-          console.log('⚠️ 找不到目标下拉框，打印页面内容...');
-          await page.screenshot({ path: 'error.png' });
-          const pageContent = await page.content();
-          console.log('页面HTML片段:', pageContent.slice(0, 1000));
-          await browser.close();
-          process.exit(1);
-        }
-      } else {
-        console.log('❌ 登录后跳转到未知页面:', currentURL);
-        await page.screenshot({ path: 'error.png' });
-        const pageContent = await page.content();
-        console.log('页面HTML片段:', pageContent.slice(0, 1000));
-        await browser.close();
-        process.exit(1);
-      }
-    } catch (e) {
-      console.log('❌ 登录流程异常:', e);
+    }
+    // 输入完后点击页面空白处，触发失焦
+    await page.mouse.click(10, 10);
+    console.log('⏳ 等待一下再点击登录...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log('🔘 点击登录按钮...');
+    await page.realClick('input[type="submit"]');
+    console.log('🛡️ 等待跳转页面...');
+    await page.waitForNavigation({ timeout: 30_000, waitUntil: 'domcontentloaded' });
+    const currentURL = page.url();
+    console.log('📍 当前页面URL:', currentURL);
+    if (!currentURL.includes('class-list.aspx')) {
+      console.log('❌ 登录失败，停止执行');
       await page.screenshot({ path: 'error.png' });
-      const currentURL = page.url();
-      const pageContent = await page.content();
-      console.log('当前URL:', currentURL);
-      console.log('页面HTML片段:', pageContent.slice(0, 1000)); // 只打印前1000字符
       await browser.close();
       process.exit(1);
     }
+    console.log('✅ 登录成功!');
   } else {
     console.log('✅ 已登录，无需再次登录!');
   }
 
-  try {
-    console.log('📄 正在跳转到导出页面...');
-    await page.goto('https://www.enrollware.com/admin/student-export.aspx', { waitUntil: 'domcontentloaded' });
-    // 等待页面关键元素渲染出来
-    await page.waitForSelector('select[name="ctl00$mainContent$regdateType"]', { visible: true, timeout: 20000 });
-    await page.waitForSelector('select[name="ctl00$mainContent$dateType"]', { visible: true, timeout: 20000 });
-  } catch (e) {
-    console.log('❌ 跳转导出页面异常:', e);
-    await page.screenshot({ path: 'error.png' });
-    await browser.close();
-    process.exit(1);
-  }
+  console.log('📄 正在跳转到导出页面...');
+  await page.goto('https://www.enrollware.com/admin/student-export.aspx', { waitUntil: 'domcontentloaded' });
+
+  // 等待页面关键元素渲染出来
+  await page.waitForSelector('select[name="ctl00$mainContent$regdateType"]', { visible: true, timeout: 10000 });
+  await page.waitForSelector('select[name="ctl00$mainContent$dateType"]', { visible: true, timeout: 10000 });
 
   // 自动选择下拉框和填写日期
   // 日期变量只声明一次
@@ -242,14 +203,16 @@ const CREDS = {
 
 
   console.log('🎉 脚本执行完成。');
-  
-  // 上传到Google Drive（暂时注释掉）
-  // try {
-  //   await uploadAllExcelFiles(DOWNLOAD_DIR);
-  // } catch (error) {
-  //   console.log('⚠️ Google Drive upload failed, but export completed successfully');
-  // }
-  
   await browser.close();
 })();
- 
+
+// 全局异常处理
+process.on('unhandledRejection', async (reason, promise) => {
+  console.log('❌ 未处理的Promise拒绝:', reason);
+  process.exit(1);
+});
+
+process.on('uncaughtException', async (error) => {
+  console.log('❌ 未捕获的异常:', error);
+  process.exit(1);
+})();
