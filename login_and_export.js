@@ -45,6 +45,10 @@ const CREDS = {
         '--disable-popup-blocking',
         '--disable-notifications',
         '--no-default-browser-check',
+        '--disable-blink-features=AutomationControlled',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+        '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       ],
     },
     connectOption: {
@@ -54,6 +58,16 @@ const CREDS = {
 
   // 设置全局 navigation 超时时间为 60 秒
   page.setDefaultNavigationTimeout(60000);
+  
+  // 设置用户代理
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+  
+  // 隐藏 webdriver 属性
+  await page.evaluateOnNewDocument(() => {
+    Object.defineProperty(navigator, 'webdriver', {
+      get: () => undefined,
+    });
+  });
 
   // 先访问 class-list.aspx
   console.log('🧭 正在前往 class-list.aspx...');
@@ -65,55 +79,65 @@ const CREDS = {
     try {
       console.log('⌨️ 需要登录，输入用户名和密码...');
       
-      // 先清空输入框，确保没有残留内容
-      await page.click('input[name="username"]');
-      await page.keyboard.down('Control');
-      await page.keyboard.press('KeyA');
-      await page.keyboard.up('Control');
-      await page.keyboard.press('Backspace');
+      // 随机延迟函数
+      const randomDelay = (min, max) => new Promise(resolve => setTimeout(resolve, Math.random() * (max - min) + min));
       
-      await page.click('input[name="password"]');
-      await page.keyboard.down('Control');
-      await page.keyboard.press('KeyA');
-      await page.keyboard.up('Control');
-      await page.keyboard.press('Backspace');
+      // 等待页面完全加载
+      await randomDelay(1000, 2000);
       
-      // 使用更慢的速度输入用户名
+      // 使用 fill 方法直接设置值，避免输入截断
       console.log('输入用户名:', CREDS.user);
-      await page.click('input[name="username"]');
-      await page.type('input[name="username"]', CREDS.user, { delay: 200 });
-      await new Promise(resolve => setTimeout(resolve, 1000)); // 等待1秒确保输入完成
+      await page.fill('input[name="username"]', '');
+      await randomDelay(500, 1000);
+      await page.fill('input[name="username"]', CREDS.user);
+      await randomDelay(1000, 1500);
       
-      // 使用更慢的速度输入密码
       console.log('输入密码: [已隐藏]');
-      await page.click('input[name="password"]');
-      await page.type('input[name="password"]', CREDS.pass, { delay: 200 });
-      await new Promise(resolve => setTimeout(resolve, 1000)); // 等待1秒确保输入完成
+      await page.fill('input[name="password"]', '');
+      await randomDelay(500, 1000);
+      await page.fill('input[name="password"]', CREDS.pass);
+      await randomDelay(1000, 1500);
       
       // 验证输入是否正确
       const usernameValue = await page.$eval('input[name="username"]', el => el.value);
       const passwordValue = await page.$eval('input[name="password"]', el => el.value);
       console.log('输入验证 - 用户名:', usernameValue === CREDS.user ? '✅' : `❌ (期望: ${CREDS.user}, 实际: ${usernameValue})`);
-      console.log('输入验证 - 密码:', passwordValue === CREDS.pass ? '✅' : '❌ (长度不匹配)');
+      console.log('输入验证 - 密码:', passwordValue === CREDS.pass ? '✅' : `❌ (期望长度: ${CREDS.pass.length}, 实际长度: ${passwordValue.length})`);
       
       if (usernameValue !== CREDS.user || passwordValue !== CREDS.pass) {
-        console.log('❌ 输入验证失败，使用更保守的方式重新输入...');
+        console.log('❌ 输入验证失败，尝试备用方法...');
         
-        // 使用 fill 方法直接设置值
-        await page.fill('input[name="username"]', CREDS.user);
-        await page.fill('input[name="password"]', CREDS.pass);
+        // 备用方法：使用 evaluate 直接设置值
+        await page.evaluate((user, pass) => {
+          const usernameInput = document.querySelector('input[name="username"]');
+          const passwordInput = document.querySelector('input[name="password"]');
+          if (usernameInput) {
+            usernameInput.value = user;
+            usernameInput.dispatchEvent(new Event('input', { bubbles: true }));
+            usernameInput.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          if (passwordInput) {
+            passwordInput.value = pass;
+            passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+            passwordInput.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }, CREDS.user, CREDS.pass);
         
-        // 再次验证
+        await randomDelay(1000, 2000);
+        
+        // 最终验证
         const finalUsername = await page.$eval('input[name="username"]', el => el.value);
         const finalPassword = await page.$eval('input[name="password"]', el => el.value);
         console.log('最终验证 - 用户名:', finalUsername === CREDS.user ? '✅' : `❌ (期望: ${CREDS.user}, 实际: ${finalUsername})`);
-        console.log('最终验证 - 密码:', finalPassword === CREDS.pass ? '✅' : '❌ (长度不匹配)');
+        console.log('最终验证 - 密码:', finalPassword === CREDS.pass ? '✅' : `❌ (期望长度: ${CREDS.pass.length}, 实际长度: ${finalPassword.length})`);
       }
       
-      // 输入完后点击页面空白处，触发失焦
-      await page.mouse.click(10, 10);
-      console.log('⏳ 等待一下再点击登录...');
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // 模拟真实用户行为：点击页面其他位置
+      await page.mouse.move(100, 100);
+      await randomDelay(500, 1000);
+      await page.mouse.click(100, 100);
+      await randomDelay(1000, 2000);
+      
       console.log('🔘 点击登录按钮...');
       await page.realClick('input[type="submit"]');
       console.log('🛡️ 等待跳转页面...');
