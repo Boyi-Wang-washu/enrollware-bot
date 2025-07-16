@@ -129,6 +129,10 @@ const CREDS = {
     } catch (e) {
       console.log('❌ 登录流程异常:', e);
       await page.screenshot({ path: 'error.png' });
+      const currentURL = page.url();
+      const pageContent = await page.content();
+      console.log('当前URL:', currentURL);
+      console.log('页面HTML片段:', pageContent.slice(0, 1000)); // 只打印前1000字符
       await browser.close();
       process.exit(1);
     }
